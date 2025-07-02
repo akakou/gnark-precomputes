@@ -14,8 +14,8 @@ import (
 )
 
 type Circuit struct {
-	A frontend.Variable
-	B [100]frontend.Variable `gnark:",public"`
+	A frontend.Variable   `gnark:",public"`
+	B []frontend.Variable `gnark:",public"`
 }
 
 func (circuit *Circuit) Define(api frontend.API) error {
@@ -29,23 +29,34 @@ func (circuit *Circuit) Define(api frontend.API) error {
 }
 
 func (circuit *Circuit) PreparableIndex() int {
-	return 10
+	return 1
 }
 
 func TestProofAndVerify(t *testing.T) {
 	assert := require.New(t)
 
-	var assignment Circuit
+	precomputes := Circuit{
+		B: make([]frontend.Variable, 100),
+	}
 	res := 1
 	for i := 0; i < 100; i++ {
 		r, _ := rand.Int(rand.Reader, big.NewInt(10))
+		precomputes.B[i] = r
 
-		assignment.B[i] = r
 		res = res * int(r.Int64())
 	}
-	assignment.A = res
 
-	var circuit Circuit
+	precomputes.A = 0
+
+	assign := Circuit{
+		A: res,
+		B: []frontend.Variable{0},
+	}
+
+	circuit := Circuit{
+		B: make([]frontend.Variable, 100),
+	}
+
 	cs, err := frontend.Compile(
 		ecc.BLS12_381.ScalarField(),
 		r1cs.NewBuilder,
@@ -53,10 +64,16 @@ func TestProofAndVerify(t *testing.T) {
 	)
 	assert.NoError(err)
 
-	witness, err := frontend.NewWitness(&assignment, ecc.BLS12_381.ScalarField())
+	witness, err := frontend.NewWitness(&precomputes, ecc.BLS12_381.ScalarField())
 	assert.NoError(err)
 
 	publicWitness, err := witness.Public()
+	assert.NoError(err)
+
+	witness2, err := frontend.NewWitness(&assign, ecc.BLS12_381.ScalarField())
+	assert.NoError(err)
+
+	publicWitness2, err := witness2.Public()
 	assert.NoError(err)
 
 	pk, gvk, err := groth16.Setup(cs)
@@ -74,6 +91,6 @@ func TestProofAndVerify(t *testing.T) {
 	prepared, err := vk.PreparePublicInputs(publicWitness)
 	assert.NoError(err)
 
-	err = vk.VerifyPrepared(proof, publicWitness, prepared)
+	err = vk.VerifyPrepared(proof, publicWitness2, prepared)
 	assert.NoError(err, "proof should verify")
 }

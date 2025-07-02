@@ -62,8 +62,8 @@ func (verifyingKey *PreparedVerifyingKey) PreparePublicInputs(publicWitness fr.V
 	params := verifyingKey.PreparedParams
 
 	var kSum curve.G1Jac
+	index := params.preComputeIndex
 
-	index := len(publicWitness) - params.preComputeIndex
 	if _, err := kSum.MultiExp(vk.G1.K[index+1:], publicWitness[index:], ecc.MultiExpConfig{}); err != nil {
 		return nil, err
 	}
@@ -78,7 +78,6 @@ func (verifyingKey *PreparedVerifyingKey) VerifyPrepared(
 ) error {
 	params := verifyingKey.PreparedParams
 	vk := verifyingKey.GnarkKey
-	index := len(publicWitness) - params.preComputeIndex
 
 	// check that the points in the proof are in the correct subgroup
 	if !isValid(proof) {
@@ -98,6 +97,8 @@ func (verifyingKey *PreparedVerifyingKey) VerifyPrepared(
 
 	prepared := curve.G1Jac{}
 	prepared.Set(preparedPublicWitness)
+
+	index := params.preComputeIndex
 
 	var kSum curve.G1Jac
 	if _, err := kSum.MultiExp(vk.G1.K[1:index+1], publicWitness[:index], ecc.MultiExpConfig{}); err != nil {
