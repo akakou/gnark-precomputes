@@ -27,6 +27,11 @@ func (circuit *Circuit) Define(api frontend.API) error {
 	api.AssertIsEqual(res, circuit.A)
 	return nil
 }
+
+func (circuit *Circuit) PreparableIndex() int {
+	return 10
+}
+
 func TestProofAndVerify(t *testing.T) {
 	assert := require.New(t)
 
@@ -57,7 +62,7 @@ func TestProofAndVerify(t *testing.T) {
 	pk, gvk, err := groth16.Setup(cs)
 	assert.NoError(err)
 
-	vk, err := gnarkprecomputes.FromBLS12381GnarkKey(gvk, 1)
+	vk, err := gnarkprecomputes.FromBLS12381GnarkKey(gvk, &circuit)
 	assert.NoError(err)
 
 	proof, err := groth16.Prove(cs, pk, witness)

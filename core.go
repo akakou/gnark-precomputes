@@ -22,8 +22,8 @@ type CorePreparedVerifyingKey[
 	PreparePublicInputs(publicWitness Vector) (G1Jac, error)
 }
 
-func FromBLS12381GnarkKey(gk groth16.VerifyingKey, preComputeIndex int) (PreparedVerifyingKey[fr_bls12381.Vector, *curve_bls12381.G1Jac, *groth16_bls12381.Proof], error) {
-	ck, err := b.FromGnarkKey(gk.(*groth16_bls12381.VerifyingKey), preComputeIndex)
+func FromBLS12381GnarkKey(gk groth16.VerifyingKey, circuit PreparableCircuit) (PreparedVerifyingKey[fr_bls12381.Vector, *curve_bls12381.G1Jac, *groth16_bls12381.Proof], error) {
+	ck, err := b.FromGnarkKey(gk.(*groth16_bls12381.VerifyingKey), circuit.PreparableIndex())
 	vk := PreparedVerifyingKey[fr_bls12381.Vector, *curve_bls12381.G1Jac, *groth16_bls12381.Proof]{
 		VK: ck,
 	}

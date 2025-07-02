@@ -13,6 +13,10 @@ type PreparedVerifyingKey[
 	VK CorePreparedVerifyingKey[Vector, G1Jac, Proof]
 }
 
+type PreparableCircuit interface {
+	PreparableIndex() int
+}
+
 func (vk *PreparedVerifyingKey[Vector, G1Jac, Proof]) PreparePublicInputs(publicWitness witness.Witness) (G1Jac, error) {
 	return vk.VK.PreparePublicInputs(publicWitness.Vector().(Vector))
 }
