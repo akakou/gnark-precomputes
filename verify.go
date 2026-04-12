@@ -14,7 +14,7 @@ type PreparedVerifyingKey[
 }
 
 type PreparableCircuit interface {
-	PreparableIndex() int
+	NonPrecomputables() []int
 }
 
 func (vk *PreparedVerifyingKey[Vector, G1Jac, Proof]) PreparePublicInputs(publicWitness witness.Witness) (G1Jac, error) {
