@@ -5,6 +5,7 @@ package bls12381
 
 import (
 	"errors"
+	"slices"
 
 	"github.com/consensys/gnark-crypto/ecc"
 	curve "github.com/consensys/gnark-crypto/ecc/bls12-381"
@@ -27,17 +28,17 @@ type PreparedVerifyingKey struct {
 }
 
 type PreparedVKParams struct {
-	e               curve.GT
-	deltaNeg        curve.G2Affine
-	gammaNeg        curve.G2Affine
-	preComputeIndex int
+	e                 curve.GT
+	deltaNeg          curve.G2Affine
+	gammaNeg          curve.G2Affine
+	nonPreComputables []int
 }
 
 func isValid(proof *groth16_bls12381.Proof) bool {
 	return proof.Ar.IsInSubGroup() && proof.Krs.IsInSubGroup() && proof.Bs.IsInSubGroup()
 }
 
-func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preComputeIndex int) (*PreparedVerifyingKey, error) {
+func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preComputeIndexes []int) (*PreparedVerifyingKey, error) {
 	var params PreparedVKParams
 	var err error
 
@@ -48,7 +49,7 @@ func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preComputeIndex int) (*Prep
 
 	params.deltaNeg.Neg(&vk.G2.Delta)
 	params.gammaNeg.Neg(&vk.G2.Gamma)
-	params.preComputeIndex = preComputeIndex
+	params.nonPreComputables = preComputeIndexes
 
 	return &PreparedVerifyingKey{
 		PreparedParams: &params,
@@ -62,9 +63,26 @@ func (verifyingKey *PreparedVerifyingKey) PreparePublicInputs(publicWitness fr.V
 	params := verifyingKey.PreparedParams
 
 	var kSum curve.G1Jac
-	index := params.preComputeIndex
+	targetVK := []curve.G1Affine{}
+	targetWit := fr.Vector{}
 
-	if _, err := kSum.MultiExp(vk.G1.K[index+1:], publicWitness[index:], ecc.MultiExpConfig{}); err != nil {
+	vkLen := len(vk.G1.K)
+	witLen := len(publicWitness)
+
+	if vkLen != witLen+1 {
+		return nil, errors.New("vk len + 1 and witness length should be same")
+	}
+
+	for i := 0; i < witLen; i++ {
+		if slices.Contains(params.nonPreComputables, i) {
+			continue
+		}
+
+		targetWit = append(targetWit, publicWitness[i])
+		targetVK = append(targetVK, vk.G1.K[i+1])
+	}
+
+	if _, err := kSum.MultiExp(targetVK, targetWit, ecc.MultiExpConfig{}); err != nil {
 		return nil, err
 	}
 
@@ -98,10 +116,17 @@ func (verifyingKey *PreparedVerifyingKey) VerifyPrepared(
 	prepared := curve.G1Jac{}
 	prepared.Set(preparedPublicWitness)
 
-	index := params.preComputeIndex
-
 	var kSum curve.G1Jac
-	if _, err := kSum.MultiExp(vk.G1.K[1:index+1], publicWitness[:index], ecc.MultiExpConfig{}); err != nil {
+
+	targetVK := []curve.G1Affine{}
+	targetWit := fr.Vector{}
+
+	for _, i := range params.nonPreComputables {
+		targetWit = append(targetWit, publicWitness[i])
+		targetVK = append(targetVK, vk.G1.K[i+1])
+	}
+
+	if _, err := kSum.MultiExp(targetVK, targetWit, ecc.MultiExpConfig{}); err != nil {
 		return err
 	}
 
