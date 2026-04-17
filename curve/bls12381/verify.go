@@ -38,7 +38,7 @@ func isValid(proof *groth16_bls12381.Proof) bool {
 	return proof.Ar.IsInSubGroup() && proof.Krs.IsInSubGroup() && proof.Bs.IsInSubGroup()
 }
 
-func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preComputeIndexes []int) (*PreparedVerifyingKey, error) {
+func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preNonComputeIndexes []int) (*PreparedVerifyingKey, error) {
 	var params PreparedVKParams
 	var err error
 
@@ -49,7 +49,7 @@ func FromGnarkKey(vk *groth16_bls12381.VerifyingKey, preComputeIndexes []int) (*
 
 	params.deltaNeg.Neg(&vk.G2.Delta)
 	params.gammaNeg.Neg(&vk.G2.Gamma)
-	params.nonPreComputables = preComputeIndexes
+	params.nonPreComputables = preNonComputeIndexes
 
 	return &PreparedVerifyingKey{
 		PreparedParams: &params,
